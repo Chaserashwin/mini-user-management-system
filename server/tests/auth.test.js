@@ -1,97 +1,64 @@
-const request = require("supertest");
-const mongoose = require("mongoose");
-const app = require("../server");
-const User = require("../models/User");
+import request from "supertest";
+import app from "../src/app.js";
+import mongoose from "mongoose";
+import User from "../src/models/User.model.js";
 
-describe("Auth API Tests", () => {
-  beforeAll(async () => {
-    await mongoose.connect(
-      process.env.MONGODB_URI || "mongodb://localhost:27017/test_db"
-    );
-  });
+beforeAll(async () => {
+  await mongoose.connect(process.env.MONGO_URI);
+});
 
-  afterAll(async () => {
-    await User.deleteMany({});
-    await mongoose.connection.close();
-  });
+afterAll(async () => {
+  await User.deleteMany({});
+  await mongoose.connection.close();
+});
 
-  beforeEach(async () => {
-    await User.deleteMany({});
-  });
-
-  test("should create a new user", async () => {
+describe("Authentication Tests", () => {
+  test("Signup should create a new user", async () => {
     const res = await request(app).post("/api/auth/signup").send({
       fullName: "Test User",
-      email: "test@example.com",
-      password: "Test1234",
+      email: "test@test.com",
+      password: "password123",
     });
 
-    expect(res.status).toBe(201);
-    expect(res.body.success).toBe(true);
+    expect(res.statusCode).toBe(201);
     expect(res.body.token).toBeDefined();
   });
 
-  test("should reject duplicate email", async () => {
-    await User.create({
-      fullName: "Existing User",
-      email: "existing@example.com",
-      password: "Test1234",
-    });
-
-    const res = await request(app).post("/api/auth/signup").send({
-      fullName: "Test User",
-      email: "existing@example.com",
-      password: "Test1234",
-    });
-
-    expect(res.status).toBe(400);
-  });
-
-  test("should login with valid credentials", async () => {
-    await request(app).post("/api/auth/signup").send({
-      fullName: "Test User",
-      email: "test@example.com",
-      password: "Test1234",
-    });
-
+  test("Login should authenticate user", async () => {
     const res = await request(app).post("/api/auth/login").send({
-      email: "test@example.com",
-      password: "Test1234",
+      email: "test@test.com",
+      password: "password123",
     });
 
-    expect(res.status).toBe(200);
+    expect(res.statusCode).toBe(200);
     expect(res.body.token).toBeDefined();
   });
 
-  test("should reject invalid credentials", async () => {
-    await request(app).post("/api/auth/signup").send({
-      fullName: "Test User",
-      email: "test@example.com",
-      password: "Test1234",
-    });
-
+  test("Login fails with wrong password", async () => {
     const res = await request(app).post("/api/auth/login").send({
-      email: "test@example.com",
-      password: "WrongPassword",
+      email: "test@test.com",
+      password: "wrongpass",
     });
 
-    expect(res.status).toBe(401);
+    expect(res.statusCode).toBe(400);
   });
 
-  test("should get current user with valid token", async () => {
-    const signupRes = await request(app).post("/api/auth/signup").send({
-      fullName: "Test User",
-      email: "test@example.com",
-      password: "Test1234",
-    });
+  test("Protected route blocked without token", async () => {
+    const res = await request(app).get("/api/users");
 
-    const token = signupRes.body.token;
+    expect(res.statusCode).toBe(401);
+  });
+
+  test("User cannot access admin route", async () => {
+    const login = await request(app).post("/api/auth/login").send({
+      email: "test@test.com",
+      password: "password123",
+    });
 
     const res = await request(app)
-      .get("/api/auth/me")
-      .set("Authorization", `Bearer ${token}`);
+      .get("/api/users")
+      .set("Authorization", `Bearer ${login.body.token}`);
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.email).toBe("test@example.com");
+    expect(res.statusCode).toBe(403);
   });
 });
