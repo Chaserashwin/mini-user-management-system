@@ -143,8 +143,8 @@ MongoDB hosted on MongoDB Atlas
 
 ## Live URLs
 
-Frontend: <YOUR_VERCEL_URL>
-Backend: <YOUR_RENDER_URL>
+Frontend: [https://mini-user-management-system-eight.vercel.app]
+Backend: [https://mini-user-management-backend-4sm1.onrender.com]
 
 ## Testing
 
